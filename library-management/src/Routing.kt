@@ -1,4 +1,4 @@
-package com.example.com
+package com.example
 
 import io.ktor.server.application.*
 import io.ktor.server.pebble.respondTemplate

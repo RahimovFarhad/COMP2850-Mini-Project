@@ -1,0 +1,18 @@
+product:
+    type: jvm/app
+
+dependencies:
+  - $libs.ktor.server.core
+  - $libs.ktor.server.netty
+  - $libs.logback.classic
+  - $libs.ktor.server.core
+  - $libs.ktor.server.config.yaml
+  - $libs.ktor.server.pebble
+
+test-dependencies:
+  - $libs.ktor.server.test.host
+  - $libs.kotlin.test.junit
+
+settings:
+  jvm:
+    mainClass: io.ktor.server.netty.EngineMain
