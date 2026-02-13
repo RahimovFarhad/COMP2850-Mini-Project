@@ -4,22 +4,107 @@ import org.jetbrains.exposed.sql.Database
 import org.jetbrains.exposed.sql.SchemaUtils
 import org.jetbrains.exposed.sql.transactions.transaction
 
+import org.apache.commons.csv.CSVFormat
+import org.jetbrains.exposed.sql.StdOutSqlLogger
+import org.jetbrains.exposed.sql.addLogger
+import org.jetbrains.exposed.dao.id.EntityID
+import org.jetbrains.exposed.sql.insertAndGetId
+
+import java.io.InputStreamReader
+import java.io.BufferedReader
+import com.example.database.CopyAvailabilityStatus
+
+
 object DatabaseFactory {
-        const val URL = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;"
-        const val DRIVER = "org.h2.Driver"
+    const val BOOKS_DATA = "csv/library_booklist.csv"
 
-        val db by lazy {
-            Database.connect(URL, DRIVER)
-        }
+    private val dbUrl: String = System.getenv("DATABASE_URL")
+        ?: error("DATABASE_URL is required")
+    private val dbUser: String = System.getenv("DATABASE_USER")
+        ?: error("DATABASE_USER is required")
+    private val dbPassword: String = System.getenv("DATABASE_PASSWORD")
+        ?: error("DATABASE_PASSWORD is required")
+    private val dbDriver: String = when ((System.getenv("DATABASE_DRIVER") ?: "org.postgresql.Driver").trim().lowercase()) {
+        "postgresql", "postgres", "org.postgresql", "org.postgresql.driver" -> "org.postgresql.Driver"
+        else -> System.getenv("DATABASE_DRIVER") ?: "org.postgresql.Driver"
+    }
 
+    val db by lazy {
+        Database.connect(dbUrl, dbDriver, dbUser, dbPassword)
+    }
 
-        fun createSchema() {
-            transaction(db) {
-                SchemaUtils.create(
-                    UsersTable, BookTable, CopyTable, BorrowingTable,
-                    ReservationTable, RoomTable, RoomReservationTable, VolunteerTable
+    fun main(args: Array<String>) {
+        val logging = args.isNotEmpty() && args[0].lowercase() == "--sql"
+        val resetSchema = args.any { it == "--reset-schema" }
+        val seedBooks = args.any { it == "--seed-books" }
+
+        initDatabase(resetSchema = resetSchema, seedBooks = seedBooks, logging = logging)
+    }
+
+    fun initFromEnvironment() {
+        val logging = (System.getenv("DB_SQL_LOG") ?: "false").toBoolean()
+        val resetSchema = (System.getenv("DB_RESET_SCHEMA") ?: "false").toBoolean()
+        val seedBooks = (System.getenv("DB_SEED_BOOKS") ?: "false").toBoolean()
+        initDatabase(resetSchema = resetSchema, seedBooks = seedBooks, logging = logging)
+    }
+
+    fun initDatabase(resetSchema: Boolean, seedBooks: Boolean, logging: Boolean) {
+        transaction(db) {
+            if (logging) {
+                addLogger(StdOutSqlLogger)
+            }
+
+            if (resetSchema) {
+                SchemaUtils.drop(
+                    VolunteerTable, RoomReservationTable, ReservationTable, BorrowingTable,
+                    CopyTable, RoomTable, BookTable, UsersTable
                 )
             }
+            SchemaUtils.create(
+                UsersTable, BookTable, CopyTable, BorrowingTable,
+                ReservationTable, RoomTable, RoomReservationTable, VolunteerTable
+            )
+
+            if (seedBooks) {
+                addBooks(BOOKS_DATA)
+            }
         }
-    
+    }
+
+    fun addBooks(filename: String): LinkedHashMap<String, EntityID<Int>> {
+        val inputStream = this::class.java.classLoader.getResourceAsStream(filename)
+            ?: throw IllegalArgumentException("File not found: $filename")
+
+        InputStreamReader(inputStream).use { reader ->
+            val records = CSVFormat.DEFAULT.parse(BufferedReader(reader)).drop(1)
+            val books = LinkedHashMap<String, EntityID<Int>>()
+            val copies = LinkedHashMap<String, EntityID<Int>>()
+            for (record in records) {
+                if (books.containsKey(record[0])) {
+                    val bookId = books[record[0]] ?: error("Book id missing for title ${record[0]}")
+                    copies[record[0]] = CopyTable.insertAndGetId {
+                        it[book] = bookId
+                        it[availabilityStatus] = CopyAvailabilityStatus.available
+                        it[location] = "Default Location"
+                    }
+                    continue
+                }
+                // if (Book.find {BookTable.isbn eq record[2]}.count() == 0L){
+                    books[record[0]] = BookTable.insertAndGetId {
+                        it[title] = record[0]
+                        it[author] = record[1]
+                        it[isbn] = record[2]
+                    }
+                // }
+                val bookId = books[record[0]] ?: error("Book id missing for title ${record[0]}")
+                copies[record[0]] = CopyTable.insertAndGetId {
+                    it[book] = bookId
+                    it[availabilityStatus] = CopyAvailabilityStatus.available
+                    it[location] = "Default Location"
+                }
+
+            }
+            return books
+        }
+    }
 }

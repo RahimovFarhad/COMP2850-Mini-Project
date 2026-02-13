@@ -9,6 +9,7 @@ class Users(id: EntityID<Int>) : IntEntity(id) {
 
     var name by UsersTable.name
     var email by UsersTable.email
+    var passwordHash by UsersTable.passwordHash
     var role by UsersTable.role
     var homeAddress by UsersTable.homeAddress
     var phoneNumber by UsersTable.phoneNumber

@@ -35,4 +35,20 @@ class ReservationRepository {
 
         return@transaction true
     }
+
+    fun cancelReservation(reservationId: Int): Boolean = transaction {
+        val reservation = Reservation.findById(reservationId) ?: return@transaction false
+        if (reservation.status != ReservationStatus.active) return@transaction false
+
+        val copyId = reservation.copy.id.value
+        val releasedRows = CopyTable.update({
+            (CopyTable.id eq copyId) and (CopyTable.availabilityStatus eq CopyAvailabilityStatus.reserved)
+        }) {
+            it[availabilityStatus] = CopyAvailabilityStatus.available
+        }
+        if (releasedRows != 1) return@transaction false
+
+        reservation.status = ReservationStatus.cancelled
+        return@transaction true
+    }
 }

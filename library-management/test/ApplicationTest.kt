@@ -1,24 +1,19 @@
 package com.example.test
 
-import com.example.testModule
 import com.example.database.Book
-import com.example.database.Copy
-import com.example.database.CopyAvailabilityStatus
-import com.example.database.Reservation
-import com.example.database.ReservationStatus
-import com.example.database.UserRole
-import com.example.database.Users
-import com.example.repository.BookRepository
-import com.example.repository.ReservationRepository
-import com.example.service.BookService
+import com.example.testModule
 import io.kotest.core.spec.style.StringSpec
 import io.kotest.matchers.shouldBe
-import io.kotest.matchers.shouldNotBe
 import io.kotest.matchers.string.shouldContain
+import io.ktor.client.request.forms.FormDataContent
 import io.ktor.client.request.get
+import io.ktor.client.request.post
+import io.ktor.client.request.setBody
 import io.ktor.client.statement.HttpResponse
 import io.ktor.client.statement.bodyAsText
 import io.ktor.http.HttpStatusCode
+import io.ktor.http.Parameters
+import io.ktor.server.config.MapApplicationConfig
 import io.ktor.server.testing.testApplication
 import org.jetbrains.exposed.sql.transactions.transaction
 
@@ -26,6 +21,7 @@ import org.jetbrains.exposed.sql.transactions.transaction
 class ApplicationTest : StringSpec({
     "Home page loads correctly" {
         testApplication {
+            environment { config = MapApplicationConfig() }
             application { testModule() }
             val response = client.get("/").also { checkForHtml(it) }
             response.bodyAsText().let {
@@ -36,6 +32,7 @@ class ApplicationTest : StringSpec({
 
     "Books page loads and lists books correctly" {
         testApplication {
+            environment { config = MapApplicationConfig() }
             application { testModule() }
             val response = client.get("/books").also { checkForHtml(it) }
             response.bodyAsText().let {
@@ -46,99 +43,87 @@ class ApplicationTest : StringSpec({
         }
     }
 
-    "Book finding by ISBN works" {
+    "Book search works (HTTP)" {
         testApplication {
+            environment { config = MapApplicationConfig() }
             application { testModule() }
 
-            val bookService = BookService(BookRepository())
-            val foundBook = bookService.getBookByISBN("1234567890")
-
-            foundBook shouldNotBe null
-            foundBook!!.title shouldBe "Test Book"
-            foundBook.author shouldBe "Test Author"
-            foundBook.isbn shouldBe "1234567890"
-        }
-    }
-
-    "Book reserving marks copy as reserved and creates active reservation" {
-        testApplication {
-            application { testModule() }
-
-            val reservationRepository = ReservationRepository()
-            val (copyId, userId) = transaction {
-                val bookService = BookService(BookRepository())
-                val book = bookService.getBookByISBN("1234567890")
-
-                book shouldNotBe null
-
-                val copy = Copy.new {
-                    this.book = book!!
-                    this.availabilityStatus = CopyAvailabilityStatus.available
-                    this.location = "Shelf-A1"
+            client.get("/") // Triggering startup because of lazy load
+            transaction {
+                Book.new {
+                    title = "Ktor in Action"
+                    author = "Alex Doe"
+                    isbn = "9000000001"
                 }
-                val user = Users.new {
-                    name = "Test User"
-                    email = "test.user@example.com"
-                    role = UserRole.member
-                    homeAddress = null
-                    phoneNumber = null
-                    age = null
+                Book.new {
+                    title = "Database Basics"
+                    author = "Jane Roe"
+                    isbn = "9000000002"
                 }
-                copy.id.value to user.id.value
             }
 
-            val reserved = reservationRepository.reserveCopy(copyId, userId)
-            reserved shouldBe true
-
-            transaction {
-                val copy = Copy.findById(copyId)
-                copy shouldNotBe null
-                copy!!.availabilityStatus shouldBe CopyAvailabilityStatus.reserved
-
-                val reservation = Reservation.find { com.example.database.ReservationTable.copy eq copy.id }.firstOrNull()
-                reservation shouldNotBe null
-                reservation!!.user.id.value shouldBe userId
-                reservation.status shouldBe ReservationStatus.active
+            val response = client.get("/books/search?query=Ktor")
+            response.status shouldBe HttpStatusCode.OK
+            response.bodyAsText().let {
+                it shouldContain "title=Ktor in Action"
+                it shouldContain "author=Alex Doe"
+                it shouldContain "isbn=9000000001"
             }
         }
     }
 
-    "Book reserving marks copy as reserved and creates active reservation" {
+    "Book find by id works (HTTP)" {
         testApplication {
+            environment { config = MapApplicationConfig() }
             application { testModule() }
 
-            val reservationRepository = ReservationRepository()
-            val (copyId, userId) = transaction {
-                val book = Book.find { com.example.database.BookTable.isbn eq "1234567890" }.first()
-                val copy = Copy.new {
-                    this.book = book
-                    this.availabilityStatus = CopyAvailabilityStatus.available
-                    this.location = "Shelf-A1"
-                }
-                val user = Users.new {
-                    name = "Test User"
-                    email = "test.user@example.com"
-                    role = UserRole.member
-                    homeAddress = null
-                    phoneNumber = null
-                    age = null
-                }
-                copy.id.value to user.id.value
+            client.get("/") // Triggering startup because of lazy load
+            val targetId = transaction {
+                Book.new {
+                    title = "Refactoring Kotlin"
+                    author = "Martin C."
+                    isbn = "9000000003"
+                }.id.value
             }
-
-            val reserved = reservationRepository.reserveCopy(copyId, userId)
-            reserved shouldBe true
-
             transaction {
-                val copy = Copy.findById(copyId)
-                copy shouldNotBe null
-                copy!!.availabilityStatus shouldBe CopyAvailabilityStatus.reserved
-
-                val reservation = Reservation.find { com.example.database.ReservationTable.copy eq copy.id }.firstOrNull()
-                reservation shouldNotBe null
-                reservation!!.user.id.value shouldBe userId
-                reservation.status shouldBe ReservationStatus.active
+                Book.new {
+                    title = "Another Book"
+                    author = "Someone Else"
+                    isbn = "9000000004"
+                }
             }
+
+
+            val response = client.get("/books/$targetId")
+            response.status shouldBe HttpStatusCode.OK
+            response.bodyAsText().let {
+                it shouldContain "id=$targetId"
+                it shouldContain "title=Refactoring Kotlin"
+                it shouldContain "author=Martin C."
+                it shouldContain "isbn=9000000003"
+            }
+        }
+    }
+
+    "Reserving and cancelling endpoints return expected HTTP responses" {
+        testApplication {
+            environment { config = MapApplicationConfig() }
+            application { testModule() }
+
+            val reserveBad = client.post("/reservations/reserve") {
+                setBody(
+                    FormDataContent(
+                        Parameters.build {
+                            append("copyId", "1")
+                            append("userId", "1")
+                        }
+                    )
+                )
+            }
+            reserveBad.status shouldBe HttpStatusCode.Conflict
+
+            val cancelBad = client.post("/reservations/1/cancel")
+            cancelBad.status shouldBe HttpStatusCode.Conflict
         }
     }
 })

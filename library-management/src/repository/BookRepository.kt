@@ -8,6 +8,9 @@ import org.jetbrains.exposed.sql.or
 import org.jetbrains.exposed.sql.transactions.transaction
 
 class BookRepository {
+    fun findById(id: Int): Book? = transaction{
+        Book.find { BookTable.id eq id }.firstOrNull()
+    }
     fun findByISBN(isbn: String): Book? = transaction{
         val isbn_trim = isbn.trim()
         Book.find { BookTable.isbn eq isbn_trim }.firstOrNull()
