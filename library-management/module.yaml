@@ -1,17 +1,25 @@
 product:
-    type: jvm/app
+  type: jvm/app
 
 dependencies:
   - $libs.ktor.server.core
   - $libs.ktor.server.netty
-  - $libs.logback.classic
-  - $libs.ktor.server.core
   - $libs.ktor.server.config.yaml
   - $libs.ktor.server.pebble
+  - $libs.logback.classic
+  - $libs.exposed.core
+  - $libs.exposed.dao
+  - $libs.exposed.jdbc
+  - $libs.exposed.java.time
+  - $libs.h2
+  - $libs.postgresql
+  - $libs.commons.csv
 
 test-dependencies:
   - $libs.ktor.server.test.host
   - $libs.kotlin.test.junit
+  - $libs.kotest.runner.junit5
+  - $libs.kotest.assertions.core
 
 settings:
   jvm:

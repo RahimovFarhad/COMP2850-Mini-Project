@@ -1,0 +1,17 @@
+{% extends "base.peb" %}
+
+{% block title %}Copies{% endblock %}
+
+{% block content %}
+<h2>Copies</h2>
+<ul>
+  {% for copy in copies %}
+    <li>
+      {{ copy.bookTitle }} - {{ copy.availabilityStatus }}
+      (Location: {{ copy.location }})
+    </li>
+  {% else %}
+    <li>No copies found.</li>
+  {% endfor %}
+</ul>
+{% endblock %}

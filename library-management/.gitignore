@@ -1,5 +1,10 @@
 .gradle
 build/
+target/
+out/
+bin/
+tmp/
+*.class
 !gradle/wrapper/gradle-wrapper.jar
 !**/src/main/**/build/
 !**/src/test/**/build/
@@ -34,3 +39,16 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Env / secrets ###
+.env
+.env.*
+*.local
+
+### Logs ###
+*.log
+logs/
