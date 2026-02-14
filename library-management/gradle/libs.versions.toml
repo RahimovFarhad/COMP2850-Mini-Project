@@ -1,4 +1,5 @@
 [versions]
+<<<<<<< Updated upstream
 csv = "1.14.1"
 exposed = "0.50.1"
 h2 = "2.4.240"
@@ -7,6 +8,12 @@ logback = "1.5.22"
 kotest = "5.9.1"
 ktor = "2.3.12"
 kotlin = "2.0.21"
+=======
+kotlin = "2.3.0"
+ktor = "3.4.0"
+logback = "1.4.14"
+p4j = "1.8.4"
+>>>>>>> Stashed changes
 
 [libraries]
 commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "csv" }
@@ -23,6 +30,20 @@ ktor-server-config-yaml = { module = "io.ktor:ktor-server-config-yaml", version.
 ktor-server-pebble = { module = "io.ktor:ktor-server-pebble", version.ref = "ktor" }
 ktor-server-test-host = { module = "io.ktor:ktor-server-test-host-jvm", version.ref = "ktor" }
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
+<<<<<<< Updated upstream
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5-jvm", version.ref = "kotest" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core-jvm", version.ref = "kotest" }
 
+=======
+password4j = { module = "com.password4j:password4j", version.ref = "p4j" }
+
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
+
+
+
+
+
+>>>>>>> Stashed changes

@@ -1,0 +1,16 @@
+{# @pebvariable name="users" type="Int" #}
+{% extends "base.peb" %}
+{% block content %}
+<h1>Welcome!</h1>
+<p>This site has
+{% if users == 1 %}
+1 registered user.</p>
+{% else %}
+{{ users }} registered users.</p>
+{% endif %}
+<ul>
+  <li><a href="/private">Access private page</a> (registered users only!)</li>
+  <li><a href="/login">Sign in</a> if you are a registered user</li>
+  <li><a href="/register">Sign up</a> if you are new here</li>
+</ul>
+{% endblock %}
