@@ -42,7 +42,7 @@ object UserDatabase {
         require(cred.name !in passwordMap) { "username already exists" }
         require(cred.passwordIsValid()) { "invalid password" }
 
-        val hash = Password.hash(cred.password).addRandomSalt(8).withScrypt()
+        val hash = Password.hash(cred.password).withScrypt()
         passwordMap[cred.name] = hash.result
         authFile.appendText("${cred.name},${hash.result}\n")
     }

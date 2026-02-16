@@ -1,6 +1,10 @@
 // Set up application routing & request handling
 package com.example
-<<<<<<< Updated upstream
+
+import io.ktor.server.sessions.clear
+import io.ktor.server.sessions.sessions
+import io.ktor.server.sessions.set
+import io.ktor.server.sessions.get
 
 import com.example.repository.BookRepository
 import com.example.repository.ReservationRepository
@@ -12,7 +16,6 @@ import io.ktor.server.pebble.respondTemplate
 import io.ktor.server.request.receiveParameters
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.*
-=======
 import io.ktor.server.application.Application
 import io.ktor.server.application.ApplicationCall
 import io.ktor.server.application.log
@@ -30,7 +33,6 @@ import io.ktor.server.sessions.clear
 import io.ktor.server.sessions.sessions
 import io.ktor.server.sessions.set
 import io.ktor.server.util.getOrFail
->>>>>>> Stashed changes
 
 import org.jetbrains.exposed.sql.transactions.transaction
 import com.example.database.Book
@@ -143,7 +145,6 @@ private suspend fun ApplicationCall.homePage() {
     respondTemplate("index.peb", model = mapOf("users" to UserDatabase.size))
 }
 
-<<<<<<< Updated upstream
 private suspend fun ApplicationCall.displayBooks() {
     val books = transaction {
         Book.all().toList()
@@ -164,7 +165,6 @@ private suspend fun ApplicationCall.displayCopies() {
     }
     respondTemplate("copies.peb", mapOf("copies" to copiesForView))
 }
-=======
 private suspend fun ApplicationCall.registrationPage() {
     respondTemplate("register.peb", model = emptyMap())
 }
@@ -203,20 +203,26 @@ private suspend fun ApplicationCall.login() {
 }
 
 private suspend fun ApplicationCall.privatePage() {
-    val session = principal<UserSession>()
+    val session = sessions.get<UserSession>()
+    if (session == null) {
+        respondRedirect("/login")
+        return
+    }
+
     // Increment visit count & update session cookie
-    sessions.set(session?.copy(count = session.count + 1))
+    sessions.set(session.copy(count = session.count + 1))
 
     respondTemplate("private.peb", model = mapOf(
-        "username" to session?.username.toString(),
-        "visits" to (session?.count ?: 0),
+        "username" to session.username,
+        "visits" to session.count,
     ))
 }
 
+
 private suspend fun ApplicationCall.logout() {
-    val username = principal<UserSession>()?.username.toString()
+    val username = sessions.get<UserSession>()?.username.toString()
     application.log.info("User $username logged out")
     sessions.clear<UserSession>()
     respondRedirect("/")
 }
->>>>>>> Stashed changes
+

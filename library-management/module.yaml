@@ -6,7 +6,6 @@ dependencies:
   - $libs.ktor.server.netty
   - $libs.ktor.server.config.yaml
   - $libs.ktor.server.pebble
-<<<<<<< Updated upstream
   - $libs.logback.classic
   - $libs.exposed.core
   - $libs.exposed.dao
@@ -15,10 +14,11 @@ dependencies:
   - $libs.h2
   - $libs.postgresql
   - $libs.commons.csv
-=======
   - $libs.password4j
   - $libs.logback.classic: runtime-only
->>>>>>> Stashed changes
+  - $libs.ktor.server.auth
+  - $libs.ktor.server.sessions
+
 
 test-dependencies:
   - $libs.ktor.server.test.host
