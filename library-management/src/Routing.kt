@@ -53,7 +53,6 @@ fun Application.configureRouting() {
             post("/login") { call.login() }
         }
         authenticate("auth-session") {
-            get("/private") { call.privatePage() }
             get("/logout") { call.logout() }
         }
         get("/books") {
@@ -176,10 +175,10 @@ private suspend fun ApplicationCall.registerUser() {
     }
     if (result.isSuccess) {
         application.log.info("User ${credentials.name} registered")
-        respondRedirect("/")
+        respondTemplate("register.peb", model = mapOf("success" to true))
     }
     else {
-        val error = result.exceptionOrNull()?.message ?: ""
+        val error = result.exceptionOrNull()?.message ?: "Unknown error"
         respondTemplate("register.peb", model = mapOf("error" to error))
     }
 }
@@ -199,24 +198,10 @@ private suspend fun ApplicationCall.login() {
     val username = principal<UserIdPrincipal>()?.name.toString()
     application.log.info("User $username logged in")
     sessions.set(UserSession(username, 1))
-    respondRedirect("/private")
+    respondRedirect("/")
 }
 
-private suspend fun ApplicationCall.privatePage() {
-    val session = sessions.get<UserSession>()
-    if (session == null) {
-        respondRedirect("/login")
-        return
-    }
 
-    // Increment visit count & update session cookie
-    sessions.set(session.copy(count = session.count + 1))
-
-    respondTemplate("private.peb", model = mapOf(
-        "username" to session.username,
-        "visits" to session.count,
-    ))
-}
 
 
 private suspend fun ApplicationCall.logout() {

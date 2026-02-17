@@ -1,0 +1,17 @@
+{% extends "base.peb" %}
+{% block title %}Sign In{% endblock %}
+{% block content %}
+<h2>Sign In</h2>
+<form method="post" action="/login">
+  <div style="margin-bottom: 15px;">
+    <label for="username">Username:</label>
+    <input type="text" id="username" name="username" required style="width: 100%; padding: 8px;">
+  </div>
+  <div style="margin-bottom: 15px;">
+    <label for="password">Password:</label>
+    <input type="password" id="password" name="password" required style="width: 100%; padding: 8px;">
+  </div>
+  <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Sign In</button>
+</form>
+<p>Don't have an account? <a href="/register">Sign up here</a></p>
+{% endblock %}
