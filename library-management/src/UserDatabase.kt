@@ -42,13 +42,23 @@ object UserDatabase {
         require(cred.name !in passwordMap) { "username already exists" }
         require(cred.passwordIsValid()) { "invalid password" }
 
-        val hash = Password.hash(cred.password).withScrypt()
+        val hash = Password.hash(cred.password).addRandomSalt(8).withScrypt()
         passwordMap[cred.name] = hash.result
         authFile.appendText("${cred.name},${hash.result}\n")
     }
 
-    fun check(cred: UserPasswordCredential) = when {
-        cred.name !in passwordMap -> false
-        else -> Password.check(cred.password, passwordMap[cred.name]).withScrypt()
+    fun check(cred: UserPasswordCredential): Boolean = when {
+        cred.name !in passwordMap -> {
+            println("DEBUG: Username '${cred.name}' not found. Available users: ${passwordMap.keys}")
+            false
+        }
+        else -> {
+            val hash = passwordMap[cred.name]!!
+            println("DEBUG: Stored hash: $hash")
+            println("DEBUG: Checking with password: '${cred.password}'")
+            val isValid = Password.check(cred.password, hash).withScrypt()
+            println("DEBUG: Result: $isValid")
+            isValid
+        }
     }
 }

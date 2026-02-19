@@ -49,9 +49,7 @@ fun Application.configureRouting() {
         get("/register") { call.registrationPage() }
         post("/register") { call.registerUser() }
         get("/login") { call.loginPage() }
-        authenticate("auth-form") {
-            post("/login") { call.login() }
-        }
+        post("/login") { call.manualLogin() }
         authenticate("auth-session") {
             get("/logout") { call.logout() }
         }
@@ -141,7 +139,8 @@ fun Application.configureRouting() {
 }
 
 private suspend fun ApplicationCall.homePage() {
-    respondTemplate("index.peb", model = mapOf("users" to UserDatabase.size))
+    val username = sessions.get<UserSession>()?.username ?: ""
+    respondTemplate("index.peb", model = mapOf("users" to UserDatabase.size, "username" to username))
 }
 
 private suspend fun ApplicationCall.displayBooks() {
@@ -170,6 +169,7 @@ private suspend fun ApplicationCall.registrationPage() {
 
 private suspend fun ApplicationCall.registerUser() {
     val credentials = getCredentials()
+    println("DEBUG: Registration attempt - username='${credentials.name}' password='${credentials.password}'")
     val result = runCatching {
         UserDatabase.addUser(credentials)
     }
@@ -192,6 +192,17 @@ private suspend fun ApplicationCall.getCredentials(): UserPasswordCredential {
 
 private suspend fun ApplicationCall.loginPage() {
     respondTemplate("login.peb", model = emptyMap())
+}private suspend fun ApplicationCall.manualLogin() {
+    val credentials = getCredentials()
+    println("DEBUG: Login attempt - username='${credentials.name}' password='${credentials.password}'")
+    if (UserDatabase.check(credentials)) {
+        application.log.info("User ${credentials.name} logged in")
+        sessions.set(UserSession(credentials.name, 1))
+        respondRedirect("/")
+    } else {
+        application.log.info("Login failed for user ${credentials.name}")
+        respondTemplate("login.peb", model = mapOf("error" to true))
+    }
 }
 
 private suspend fun ApplicationCall.login() {
