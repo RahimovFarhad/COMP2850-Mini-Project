@@ -1,6 +1,4 @@
 {% extends "base.peb" %}
 {% block title %}Library Management{% endblock %}
 {% block content %}
-<h2>Library Management</h2>
-<p>Project initialized successfully.</p>
 {% endblock %}

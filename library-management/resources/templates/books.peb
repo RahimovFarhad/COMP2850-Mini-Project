@@ -2,11 +2,4 @@
 {% block title %}Books{% endblock %}
 {% block content %}
 <h2>Books</h2>
-<ul>
-  {% for book in books %}
-  <li>{{ book.title }} - {{ book.author }} (ISBN: {{ book.isbn }})</li>
-  {% else %}
-  <li>No books found.</li>
-  {% endfor %}
-</ul>
 {% endblock %}
