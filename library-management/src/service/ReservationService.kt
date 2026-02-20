@@ -9,8 +9,9 @@ class ReservationService(private val reservationRepo: ReservationRepository) {
         return reservationRepo.reserveCopy(copyId, userId)
     }
 
-    fun cancelReservation(reservationId: Int): Boolean {
+    fun cancelReservation(reservationId: Int, userId: Int): Boolean {
         require(reservationId > 0) { "reservationId must be positive" }
-        return reservationRepo.cancelReservation(reservationId)
+        require(userId > 0) { "userId must be positive" }
+        return reservationRepo.cancelReservation(reservationId, userId)
     }
 }

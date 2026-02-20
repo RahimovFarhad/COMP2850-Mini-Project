@@ -35,8 +35,21 @@ import io.ktor.server.sessions.set
 import io.ktor.server.util.getOrFail
 
 import org.jetbrains.exposed.sql.transactions.transaction
+import org.jetbrains.exposed.sql.selectAll
+import org.jetbrains.exposed.sql.innerJoin
+import org.jetbrains.exposed.sql.SortOrder
 import com.example.database.Book
 import com.example.database.Copy
+import com.example.database.BookTable
+import com.example.database.CopyTable
+import com.example.database.Reservation
+import com.example.database.ReservationTable
+import com.example.database.Users
+import com.example.database.UsersTable
+import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
+
+import com.example.database.UserRole
+import com.example.database.CopyAvailabilityStatus
 
 
 fun Application.configureRouting() {
@@ -52,9 +65,153 @@ fun Application.configureRouting() {
         post("/login") { call.manualLogin() }
         authenticate("auth-session") {
             get("/logout") { call.logout() }
+
+            post("/reservations/reserve") {
+                val username = call.sessions.get<UserSession>()?.username?.trim().orEmpty()
+                val userId = findOrCreateMemberUserId(username)
+                if (userId == null) {
+                    call.respondText("User not found", status = HttpStatusCode.Unauthorized)
+                    return@post
+                }
+
+                val params = call.receiveParameters()
+                val copyId = (call.request.queryParameters["copyId"] ?: params["copyId"])?.toIntOrNull()
+                if (copyId == null) {
+                    call.respondText("copyId is required integer", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val ok = try {
+                    reservationService.reserveCopy(copyId, userId)
+                } catch (err: IllegalArgumentException) {
+                    false
+                }
+
+                if (ok) {
+                    call.respondText("Reservation created.")
+                } else {
+                    call.respondText("Reservation failed.", status = HttpStatusCode.Conflict)
+                }
+            }
+            post("/reservations/{reservationId}/cancel") {
+                val username = call.sessions.get<UserSession>()?.username?.trim().orEmpty()
+                val userId = findOrCreateMemberUserId(username)
+                if (userId == null) {
+                    call.respondText("User not found", status = HttpStatusCode.Unauthorized)
+                    return@post
+                }
+
+                val id = call.parameters["reservationId"]?.toIntOrNull()
+                if (id == null) {
+                    call.respondText("reservationId must be an integer", status = HttpStatusCode.BadRequest)
+                    return@post
+                }
+
+                val ok = try {
+                    reservationService.cancelReservation(id, userId)
+                } catch (_: IllegalArgumentException) {
+                    false
+                }
+                if (ok) {
+                    call.respondText("Reservation cancelled.")
+                } else {
+                    call.respondText("Cancel failed.", status = HttpStatusCode.Conflict)
+                }
+            }
+            get("/my-reservations"){
+                val username = call.sessions.get<UserSession>()?.username?.trim().orEmpty()
+                val userId = findOrCreateMemberUserId(username)
+                if (userId == null) {
+                    call.respondText("User not found", status = HttpStatusCode.Unauthorized)
+                    return@get
+                }
+
+                val reservationsForView = transaction {
+                    Reservation.find {ReservationTable.user eq userId}
+                        .toList()
+                        .sortedByDescending { it.dateReserved }
+                        .map {
+                            mapOf(
+                                "reservationId" to it.id.value,
+                                "copyId" to it.copy.id.value,
+                                "bookTitle" to it.copy.book.title,
+                                "status" to it.status.name,
+                                "dateReserved" to it.dateReserved
+                            )
+                        }
+                }
+                call.respondTemplate(
+                    "my-reservations.peb",
+                    mapOf(
+                        "username" to username,
+                        "reservations" to reservationsForView
+                    )
+                )
+            }
+            put("/set-availability/{copyId}"){
+                val username = call.sessions.get<UserSession>()?.username?.trim().orEmpty()
+                val currentUser = transaction {
+                    Users.find { UsersTable.name eq username }.firstOrNull()
+                }
+                if (currentUser == null) {
+                    call.respondText("User not found", status = HttpStatusCode.Unauthorized)
+                    return@put
+                }
+                if (currentUser.role == UserRole.member) {
+                    call.respondText("Only library workers can change availability", status = HttpStatusCode.Forbidden)
+                    return@put
+                }
+
+                val copyId = call.parameters["copyId"]?.toIntOrNull()
+                if (copyId == null) {
+                    call.respondText("copyId must be an integer", status = HttpStatusCode.BadRequest)
+                    return@put
+                }
+
+                val newAvailabilityRaw = call.request.queryParameters["availability"]?.trim().orEmpty()
+                val newAvailability = try {
+                    CopyAvailabilityStatus.valueOf(newAvailabilityRaw.lowercase())
+                } catch (_: IllegalArgumentException) {
+                    call.respondText("Invalid availability value", status = HttpStatusCode.BadRequest)
+                    return@put
+                }
+
+                val result = transaction {
+                    val copy = Copy.findById(copyId) ?: return@transaction "NOT_FOUND"
+                    val currentAvailability = copy.availabilityStatus
+                    if (!isAvailabilityTransitionAllowed(currentAvailability, newAvailability)) {
+                        return@transaction "INVALID_TRANSITION"
+                    }
+                    copy.availabilityStatus = newAvailability
+                    return@transaction "OK"
+                }
+
+                when (result) {
+                    "NOT_FOUND" -> call.respondText("Copy not found", status = HttpStatusCode.NotFound)
+                    "INVALID_TRANSITION" -> call.respondText(
+                        "Invalid availability transition from current state",
+                        status = HttpStatusCode.Conflict
+                    )
+                    else -> call.respondText("Availability updated")
+                }
+
+            }
         }
         get("/books") {
-            call.displayBooks()
+            val isbn = call.request.queryParameters["isbn"]?.trim().orEmpty()
+            val title = call.request.queryParameters["title"]?.trim().orEmpty()
+            val author = call.request.queryParameters["author"]?.trim().orEmpty()
+            val query = call.request.queryParameters["query"]?.trim().orEmpty()
+
+            val books = when {
+                isbn.isNotEmpty() -> listOfNotNull(bookService.getBookByISBN(isbn))
+                title.isNotEmpty() -> bookService.searchBooksByTitle(title)
+                author.isNotEmpty() -> bookService.searchBooksByAuthor(author)
+                query.isNotEmpty() -> bookService.searchByAny(query)
+                else -> bookService.getAllBooks()
+            }
+
+            call.displayBooks(books, isbn, title, author, query)
         }
         get("/books/search") {
             val isbn = call.request.queryParameters["isbn"]?.trim().orEmpty()
@@ -96,72 +253,76 @@ fun Application.configureRouting() {
         get("/copies") {
             call.displayCopies()
         }
-        post("/reservations/reserve") {
-            val params = call.receiveParameters()
-            val copyId = (call.request.queryParameters["copyId"] ?: params["copyId"])?.toIntOrNull()
-            val userId = (call.request.queryParameters["userId"] ?: params["userId"])?.toIntOrNull()
-            if (copyId == null || userId == null) {
-                call.respondText("copyId and userId are required integers", status = HttpStatusCode.BadRequest)
-                return@post
-            }
-
-            val ok = try {
-                reservationService.reserveCopy(copyId, userId)
-            } catch (err: IllegalArgumentException) {
-                false
-            }
-
-            if (ok) {
-                call.respondText("Reservation created.")
-            } else {
-                call.respondText("Reservation failed.", status = HttpStatusCode.Conflict)
-            }
-        }
-        post("/reservations/{reservationId}/cancel") {
-            val id = call.parameters["reservationId"]?.toIntOrNull()
-            if (id == null) {
-                call.respondText("reservationId must be an integer", status = HttpStatusCode.BadRequest)
-                return@post
-            }
-
-            val ok = try {
-                reservationService.cancelReservation(id)
-            } catch (_: IllegalArgumentException) {
-                false
-            }
-            if (ok) {
-                call.respondText("Reservation cancelled.")
-            } else {
-                call.respondText("Cancel failed.", status = HttpStatusCode.Conflict)
-            }
-        }
+        
     }
 }
 
 private suspend fun ApplicationCall.homePage() {
     val username = sessions.get<UserSession>()?.username ?: ""
-    respondTemplate("index.peb", model = mapOf("users" to UserDatabase.size, "username" to username))
+    val userRole = if (username.isBlank()) {
+        ""
+    } else {
+        transaction {
+            Users.find { UsersTable.name eq username }.firstOrNull()?.role?.name ?: ""
+        }.orEmpty()
+    }
+    respondTemplate(
+        "index.peb",
+        model = mapOf(
+            "users" to UserDatabase.size,
+            "username" to username,
+            "userRole" to userRole
+        )
+    )
 }
 
-private suspend fun ApplicationCall.displayBooks() {
-    val books = transaction {
-        Book.all().toList()
-    }
-
-    respondTemplate("books.peb", model = mapOf("books" to books))
+private suspend fun ApplicationCall.displayBooks(
+    books: List<Book>,
+    isbn: String = "",
+    title: String = "",
+    author: String = "",
+    query: String = ""
+) {
+    respondTemplate(
+        "books.peb",
+        model = mapOf(
+            "books" to books,
+            "isbn" to isbn,
+            "titleFilter" to title,
+            "authorFilter" to author,
+            "queryFilter" to query
+        )
+    )
 }
 
 private suspend fun ApplicationCall.displayCopies() {
+    val username = sessions.get<UserSession>()?.username ?: ""
+    val userRole = if (username.isBlank()) {
+        ""
+    } else {
+        transaction {
+            Users.find { UsersTable.name eq username }.firstOrNull()?.role?.name ?: ""
+        }.orEmpty()
+    }
+
     val copiesForView = transaction {
-        Copy.all().map {
+        (CopyTable innerJoin BookTable).selectAll().orderBy(CopyTable.id to SortOrder.ASC).map {
             mapOf(
-                "bookTitle" to it.book.title,
-                "availabilityStatus" to it.availabilityStatus.name,
-                "location" to it.location
+                "copyId" to it[CopyTable.id].value,
+                "bookTitle" to it[BookTable.title],
+                "availabilityStatus" to it[CopyTable.availabilityStatus].name,
+                "location" to it[CopyTable.location]
             )
         }
     }
-    respondTemplate("copies.peb", mapOf("copies" to copiesForView))
+    respondTemplate(
+        "copies.peb",
+        mapOf(
+            "copies" to copiesForView,
+            "username" to username,
+            "userRole" to userRole
+        )
+    )
 }
 private suspend fun ApplicationCall.registrationPage() {
     respondTemplate("register.peb", model = emptyMap())
@@ -169,9 +330,9 @@ private suspend fun ApplicationCall.registrationPage() {
 
 private suspend fun ApplicationCall.registerUser() {
     val credentials = getCredentials()
-    println("DEBUG: Registration attempt - username='${credentials.name}' password='${credentials.password}'")
     val result = runCatching {
         UserDatabase.addUser(credentials)
+        findOrCreateMemberUserId(credentials.name)
     }
     if (result.isSuccess) {
         application.log.info("User ${credentials.name} registered")
@@ -180,6 +341,24 @@ private suspend fun ApplicationCall.registerUser() {
     else {
         val error = result.exceptionOrNull()?.message ?: "Unknown error"
         respondTemplate("register.peb", model = mapOf("error" to error))
+    }
+}
+
+private fun findOrCreateMemberUserId(username: String): Int? {
+    if (username.isBlank()) return null
+
+    return transaction {
+        val existing = Users.find { UsersTable.name eq username }.firstOrNull()
+        if (existing != null) {
+            existing.id.value
+        } else {
+            Users.new {
+                name = username
+                email = "${username}@library.local"
+                passwordHash = "managed_in_auth_csv"
+                role = UserRole.member
+            }.id.value
+        }
     }
 }
 
@@ -194,7 +373,6 @@ private suspend fun ApplicationCall.loginPage() {
     respondTemplate("login.peb", model = emptyMap())
 }private suspend fun ApplicationCall.manualLogin() {
     val credentials = getCredentials()
-    println("DEBUG: Login attempt - username='${credentials.name}' password='${credentials.password}'")
     if (UserDatabase.check(credentials)) {
         application.log.info("User ${credentials.name} logged in")
         sessions.set(UserSession(credentials.name, 1))
@@ -222,3 +400,30 @@ private suspend fun ApplicationCall.logout() {
     respondRedirect("/")
 }
 
+
+private fun isAvailabilityTransitionAllowed(
+    from: CopyAvailabilityStatus,
+    to: CopyAvailabilityStatus
+): Boolean {
+    if (from == to) return true
+
+    return when (from) {
+        CopyAvailabilityStatus.available ->
+            to == CopyAvailabilityStatus.borrowed ||
+            to == CopyAvailabilityStatus.reserved ||
+            to == CopyAvailabilityStatus.inaccessible
+        CopyAvailabilityStatus.borrowed ->
+            to == CopyAvailabilityStatus.not_returned ||
+            to == CopyAvailabilityStatus.available ||
+            to == CopyAvailabilityStatus.inaccessible
+        CopyAvailabilityStatus.reserved ->
+            to == CopyAvailabilityStatus.borrowed ||
+            to == CopyAvailabilityStatus.available ||
+            to == CopyAvailabilityStatus.inaccessible
+        CopyAvailabilityStatus.not_returned ->
+            to == CopyAvailabilityStatus.available ||
+            to == CopyAvailabilityStatus.inaccessible
+        CopyAvailabilityStatus.inaccessible ->
+            to == CopyAvailabilityStatus.available
+    }
+}

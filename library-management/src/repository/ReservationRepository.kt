@@ -36,8 +36,9 @@ class ReservationRepository {
         return@transaction true
     }
 
-    fun cancelReservation(reservationId: Int): Boolean = transaction {
+    fun cancelReservation(reservationId: Int, userId: Int): Boolean = transaction {
         val reservation = Reservation.findById(reservationId) ?: return@transaction false
+        if (reservation.user.id.value != userId) return@transaction false
         if (reservation.status != ReservationStatus.active) return@transaction false
 
         val copyId = reservation.copy.id.value
