@@ -19,14 +19,14 @@ object DatabaseFactory {
     const val BOOKS_DATA = "csv/library_booklist.csv"
 
     private val dbUrl: String = System.getenv("DATABASE_URL")
-        ?: error("DATABASE_URL is required")
+        ?: "jdbc:h2:mem:test"
     private val dbUser: String = System.getenv("DATABASE_USER")
-        ?: error("DATABASE_USER is required")
+        ?: "sa"
     private val dbPassword: String = System.getenv("DATABASE_PASSWORD")
-        ?: error("DATABASE_PASSWORD is required")
-    private val dbDriver: String = when ((System.getenv("DATABASE_DRIVER") ?: "org.postgresql.Driver").trim().lowercase()) {
+        ?: ""
+    private val dbDriver: String = when ((System.getenv("DATABASE_DRIVER") ?: "org.h2.Driver").trim().lowercase()) {
         "postgresql", "postgres", "org.postgresql", "org.postgresql.driver" -> "org.postgresql.Driver"
-        else -> System.getenv("DATABASE_DRIVER") ?: "org.postgresql.Driver"
+        else -> System.getenv("DATABASE_DRIVER") ?: "org.h2.Driver"
     }
 
     val db by lazy {

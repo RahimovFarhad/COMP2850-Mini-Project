@@ -14,6 +14,11 @@ dependencies:
   - $libs.h2
   - $libs.postgresql
   - $libs.commons.csv
+  - $libs.password4j
+  - $libs.logback.classic: runtime-only
+  - $libs.ktor.server.auth
+  - $libs.ktor.server.sessions
+
 
 test-dependencies:
   - $libs.ktor.server.test.host
@@ -24,3 +29,7 @@ test-dependencies:
 settings:
   jvm:
     mainClass: io.ktor.server.netty.EngineMain
+
+product: jvm/app
+
+

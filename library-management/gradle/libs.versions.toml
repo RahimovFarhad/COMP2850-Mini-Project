@@ -7,6 +7,8 @@ logback = "1.5.22"
 kotest = "5.9.1"
 ktor = "2.3.12"
 kotlin = "2.0.21"
+p4j = "1.8.4"
+
 
 [libraries]
 commons-csv = { module = "org.apache.commons:commons-csv", version.ref = "csv" }
@@ -25,4 +27,22 @@ ktor-server-test-host = { module = "io.ktor:ktor-server-test-host-jvm", version.
 kotlin-test-junit = { module = "org.jetbrains.kotlin:kotlin-test-junit", version.ref = "kotlin" }
 kotest-runner-junit5 = { module = "io.kotest:kotest-runner-junit5-jvm", version.ref = "kotest" }
 kotest-assertions-core = { module = "io.kotest:kotest-assertions-core-jvm", version.ref = "kotest" }
+ktor-server-auth = { module = "io.ktor:ktor-server-auth-jvm", version.ref = "ktor" }
+ktor-server-sessions = { module = "io.ktor:ktor-server-sessions-jvm", version.ref = "ktor" }
+
+
+
+
+
+
+password4j = { module = "com.password4j:password4j", version.ref = "p4j" }
+
+
+[plugins]
+kotlin-jvm = { id = "org.jetbrains.kotlin.jvm", version.ref = "kotlin" }
+ktor = { id = "io.ktor.plugin", version.ref = "ktor" }
+
+
+
+
 

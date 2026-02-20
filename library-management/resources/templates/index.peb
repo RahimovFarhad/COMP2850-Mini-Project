@@ -1,0 +1,26 @@
+{# @pebvariable name="users" type="Int" #}
+{# @pebvariable name="username" type="String" #}
+{% extends "base.peb" %}
+{% block content %}
+<h1>Welcome!</h1>
+{% if username %}
+<p style="color: green;">✓ You are logged in as <strong>{{ username }}</strong> <a href="/logout">[Log out]</a></p>
+{% else %}
+<p>You are not logged in.</p>
+{% endif %}
+<p>This site has
+{% if users == 1 %}
+1 registered user.</p>
+{% else %}
+{{ users }} registered users.</p>
+{% endif %}
+<ul>
+  {% if not username %}
+  <li><a href="/login">Sign in</a> if you are a registered user</li>
+  <li><a href="/register">Sign up</a> if you are new here</li>
+  {% else %}
+  <li><a href="/logout">Log out</a></li>
+  {% endif %}
+  <li><a href="/books">View Books</a></li>
+</ul>
+{% endblock %}
