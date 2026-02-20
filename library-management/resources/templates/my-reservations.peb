@@ -1,0 +1,68 @@
+{% extends "base.peb" %}
+
+{% block title %}My Reservations{% endblock %}
+
+{% block content %}
+<h2>My Reservations</h2>
+<p>Signed in as <strong>{{ username }}</strong>.</p>
+
+{% if reservations | length == 0 %}
+<p>You have no reservations yet.</p>
+<p><a href="/copies">Browse copies</a></p>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>Reservation ID</th>
+      <th>Copy ID</th>
+      <th>Book</th>
+      <th>Status</th>
+      <th>Reserved At (ms)</th>
+      <th>Action</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for reservation in reservations %}
+    <tr>
+      <td>{{ reservation.reservationId }}</td>
+      <td>{{ reservation.copyId }}</td>
+      <td>{{ reservation.bookTitle }}</td>
+      <td>{{ reservation.status }}</td>
+      <td>{{ reservation.dateReserved }}</td>
+      <td>
+        {% if reservation.status == "active" %}
+        <form onsubmit="return cancelReservation(event, '{{ reservation.reservationId }}')">
+          <button type="submit" class="secondary">Cancel</button>
+        </form>
+        {% else %}
+        -
+        {% endif %}
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+<p id="reservation-message" style="margin-top: 1rem;"></p>
+{% endif %}
+
+<script>
+async function cancelReservation(event, reservationId) {
+  event.preventDefault();
+  const messageEl = document.getElementById('reservation-message');
+
+  try {
+    const response = await fetch(`/reservations/${reservationId}/cancel`, {
+      method: 'POST'
+    });
+    const text = await response.text();
+    messageEl.textContent = text;
+    if (response.ok) {
+      window.location.reload();
+    }
+  } catch (error) {
+    messageEl.textContent = 'Request failed';
+  }
+  return false;
+}
+</script>
+{% endblock %}

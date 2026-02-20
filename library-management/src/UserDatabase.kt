@@ -48,17 +48,10 @@ object UserDatabase {
     }
 
     fun check(cred: UserPasswordCredential): Boolean = when {
-        cred.name !in passwordMap -> {
-            println("DEBUG: Username '${cred.name}' not found. Available users: ${passwordMap.keys}")
-            false
-        }
+        cred.name !in passwordMap -> false
         else -> {
             val hash = passwordMap[cred.name]!!
-            println("DEBUG: Stored hash: $hash")
-            println("DEBUG: Checking with password: '${cred.password}'")
-            val isValid = Password.check(cred.password, hash).withScrypt()
-            println("DEBUG: Result: $isValid")
-            isValid
+            Password.check(cred.password, hash).withScrypt()
         }
     }
 }

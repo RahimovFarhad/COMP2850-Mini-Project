@@ -1,10 +1,21 @@
 {# @pebvariable name="users" type="Int" #}
 {# @pebvariable name="username" type="String" #}
+{# @pebvariable name="userRole" type="String" #}
 {% extends "base.peb" %}
 {% block content %}
 <h1>Welcome!</h1>
 {% if username %}
 <p style="color: green;">✓ You are logged in as <strong>{{ username }}</strong> <a href="/logout">[Log out]</a></p>
+{% if userRole == "staff" %}
+<article>
+  <h3>Staff Dashboard</h3>
+  <p>You have employee access. Manage inventory availability and monitor circulation.</p>
+  <ul>
+    <li><a href="/copies">Manage copy availability</a></li>
+    <li><a href="/books">Browse and filter catalog</a></li>
+  </ul>
+</article>
+{% endif %}
 {% else %}
 <p>You are not logged in.</p>
 {% endif %}
@@ -20,7 +31,9 @@
   <li><a href="/register">Sign up</a> if you are new here</li>
   {% else %}
   <li><a href="/logout">Log out</a></li>
+  <li><a href="/my-reservations">My Reservations</a></li>
   {% endif %}
   <li><a href="/books">View Books</a></li>
+  <li><a href="/copies">View Copies</a></li>
 </ul>
 {% endblock %}
