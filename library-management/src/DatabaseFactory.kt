@@ -17,9 +17,11 @@ import com.example.database.CopyAvailabilityStatus
 
 object DatabaseFactory {
     const val BOOKS_DATA = "csv/library_booklist.csv"
+    private const val DEFAULT_H2_URL = "jdbc:h2:mem:test;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE"
 
-    private val dbUrl: String = System.getenv("DATABASE_URL")
-        ?: "jdbc:h2:mem:test"
+    private val dbUrl: String = normalizeDatabaseUrl(
+        System.getenv("DATABASE_URL") ?: DEFAULT_H2_URL
+    )
     private val dbUser: String = System.getenv("DATABASE_USER")
         ?: "sa"
     private val dbPassword: String = System.getenv("DATABASE_PASSWORD")
@@ -27,6 +29,25 @@ object DatabaseFactory {
     private val dbDriver: String = when ((System.getenv("DATABASE_DRIVER") ?: "org.h2.Driver").trim().lowercase()) {
         "postgresql", "postgres", "org.postgresql", "org.postgresql.driver" -> "org.postgresql.Driver"
         else -> System.getenv("DATABASE_DRIVER") ?: "org.h2.Driver"
+    }
+
+    private fun normalizeDatabaseUrl(rawUrl: String): String {
+        val url = rawUrl.trim()
+        if (!url.startsWith("jdbc:h2:mem:", ignoreCase = true)) {
+            return url
+        }
+
+        val lower = url.lowercase()
+        var normalized = url
+
+        if ("db_close_delay=" !in lower) {
+            normalized += if (normalized.endsWith(";")) "DB_CLOSE_DELAY=-1" else ";DB_CLOSE_DELAY=-1"
+        }
+        if ("db_close_on_exit=" !in lower) {
+            normalized += if (normalized.endsWith(";")) "DB_CLOSE_ON_EXIT=FALSE" else ";DB_CLOSE_ON_EXIT=FALSE"
+        }
+
+        return normalized
     }
 
     val db by lazy {
