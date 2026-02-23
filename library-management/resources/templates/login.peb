@@ -1,22 +1,29 @@
 {% extends "base.peb" %}
 {% block title %}Sign In{% endblock %}
 {% block content %}
-<h2>Sign In</h2>
-{% if error %}
-<div style="padding: 10px; background-color: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; color: #721c24; margin-bottom: 15px;">
-✗ Invalid username or password. Please try again.
-</div>
-{% endif %}
-<form method="post" action="/login">
-  <div style="margin-bottom: 15px;">
-    <label for="username">Username:</label>
-    <input type="text" id="username" name="username" required style="width: 100%; padding: 8px;">
-  </div>
-  <div style="margin-bottom: 15px;">
-    <label for="password">Password:</label>
-    <input type="password" id="password" name="password" required style="width: 100%; padding: 8px;">
-  </div>
-  <button type="submit" style="padding: 10px 20px; background-color: #28a745; color: white; border: none; border-radius: 4px; cursor: pointer;">Sign In</button>
-</form>
-<p>Don't have an account? <a href="/register">Sign up here</a></p>
+<section class="panel" style="max-width: 640px; margin: 0 auto;">
+  <h2>Sign In</h2>
+  <p class="muted">Welcome back. Use your account to reserve copies and manage reservations.</p>
+
+  {% if error %}
+  <p class="alert error">Invalid username or password. Please try again.</p>
+  {% endif %}
+
+  <form method="post" action="/login" class="form-stack">
+    <label for="username">
+      Username
+      <input type="text" id="username" name="username" required autocomplete="username">
+    </label>
+
+    <label for="password">
+      Password
+      <input type="password" id="password" name="password" required autocomplete="current-password">
+    </label>
+
+    <div class="action-row">
+      <button type="submit">Sign In</button>
+      <a href="/register" class="button-link button-secondary">Create Account</a>
+    </div>
+  </form>
+</section>
 {% endblock %}

@@ -1,103 +1,110 @@
 {% extends "base.peb" %}
-
 {% block title %}Copies{% endblock %}
-
 {% block content %}
-<h2>Copies</h2>
-{% if not username %}
-<p><a href="/login">Sign in</a> to reserve copies.</p>
-{% else %}
-<p><a href="/my-reservations">View my reservations</a></p>
-{% endif %}
+<section class="panel">
+  <h2>Copies</h2>
+  {% if not username %}
+  <p class="alert info"><a href="/login">Sign in</a> to reserve available copies.</p>
+  {% else %}
+  <p class="alert success">
+    Signed in as <strong>{{ username }}</strong>. <a href="/my-reservations">View my reservations</a>.
+  </p>
+  {% endif %}
+</section>
 
-{% if copies | length == 0 %}
-<p>No copies found.</p>
-{% else %}
-<table>
-  <thead>
-    <tr>
-      <th>Copy ID</th>
-      <th>Book</th>
-      <th>Current Availability</th>
-      <th>Location</th>
-      <th>Actions</th>
-    </tr>
-  </thead>
-  <tbody>
-  {% for copy in copies %}
-    <tr>
-      <td>{{ copy.copyId }}</td>
-      <td>{{ copy.bookTitle }}</td>
-      <td>{{ copy.availabilityStatus }}</td>
-      <td>{{ copy.location }}</td>
-      <td>
-        {% if username and copy.availabilityStatus == "available" %}
-        <form onsubmit="return reserveCopy(event, '{{ copy.copyId }}')" style="margin-bottom: 0.5rem;">
-          <button type="submit">Reserve</button>
-        </form>
-        {% endif %}
+<section class="panel">
+  {% if copies | length == 0 %}
+  <p class="alert info">No copies found.</p>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Copy ID</th>
+          <th>Book</th>
+          <th>Status</th>
+          <th>Location</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for copy in copies %}
+        <tr>
+          <td>{{ copy.copyId }}</td>
+          <td>{{ copy.bookTitle }}</td>
+          <td><span class="status status-{{ copy.availabilityStatus }}">{{ copy.availabilityStatus }}</span></td>
+          <td>{{ copy.location }}</td>
+          <td>
+            <div class="action-row">
+              {% if username and copy.availabilityStatus == "available" %}
+              <form onsubmit="return reserveCopy(event, '{{ copy.copyId }}')">
+                <button type="submit">Reserve</button>
+              </form>
+              {% endif %}
 
-        {% if userRole == "staff" or userRole == "volunteer" %}
-        <form onsubmit="return updateAvailability(event, '{{ copy.copyId }}')">
-          <select name="availability" required>
-            <option value="available">available</option>
-            <option value="borrowed">borrowed</option>
-            <option value="reserved">reserved</option>
-            <option value="not_returned">not_returned</option>
-            <option value="inaccessible">inaccessible</option>
-          </select>
-          <button type="submit">Set</button>
-        </form>
-        {% endif %}
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-<p id="availability-message" style="margin-top: 1rem;"></p>
-{% endif %}
+              {% if userRole == "staff" or userRole == "volunteer" %}
+              <form onsubmit="return updateAvailability(event, '{{ copy.copyId }}')" class="action-row">
+                <select name="availability" required>
+                  <option value="available" {% if copy.availabilityStatus == "available" %}selected{% endif %}>available</option>
+                  <option value="borrowed" {% if copy.availabilityStatus == "borrowed" %}selected{% endif %}>borrowed</option>
+                  <option value="reserved" {% if copy.availabilityStatus == "reserved" %}selected{% endif %}>reserved</option>
+                  <option value="not_returned" {% if copy.availabilityStatus == "not_returned" %}selected{% endif %}>not_returned</option>
+                  <option value="inaccessible" {% if copy.availabilityStatus == "inaccessible" %}selected{% endif %}>inaccessible</option>
+                </select>
+                <button type="submit" class="button-secondary">Set</button>
+              </form>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p id="availability-message" class="alert info hidden"></p>
+  {% endif %}
+</section>
+{% endblock %}
 
+{% block scripts %}
 <script>
 async function updateAvailability(event, copyId) {
   event.preventDefault();
   const form = event.target;
   const availability = form.elements.availability.value;
-  const messageEl = document.getElementById('availability-message');
-
-  try {
-    const response = await fetch(`/set-availability/${copyId}?availability=${encodeURIComponent(availability)}`, {
-      method: 'PUT'
-    });
-    const text = await response.text();
-    messageEl.textContent = text;
-    if (response.ok) {
-      window.location.reload();
-    }
-  } catch (error) {
-    messageEl.textContent = 'Request failed';
+  const response = await fetch(`/set-availability/${copyId}?availability=${encodeURIComponent(availability)}`, {
+    method: "PUT"
+  });
+  const text = await response.text();
+  showAvailabilityMessage(text, response.ok ? "success" : "error");
+  if (response.ok) {
+    window.setTimeout(function () { window.location.reload(); }, 400);
   }
   return false;
 }
 
 async function reserveCopy(event, copyId) {
   event.preventDefault();
-  const messageEl = document.getElementById('availability-message');
-
-  try {
-    const response = await fetch('/reservations/reserve', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: `copyId=${encodeURIComponent(copyId)}`
-    });
-    const text = await response.text();
-    messageEl.textContent = text;
-    if (response.ok) {
-      window.location.reload();
-    }
-  } catch (error) {
-    messageEl.textContent = 'Request failed';
+  const response = await fetch("/reservations/reserve", {
+    method: "POST",
+    headers: { "Content-Type": "application/x-www-form-urlencoded" },
+    body: `copyId=${encodeURIComponent(copyId)}`
+  });
+  const text = await response.text();
+  showAvailabilityMessage(text, response.ok ? "success" : "error");
+  if (response.ok) {
+    window.setTimeout(function () { window.location.reload(); }, 400);
   }
   return false;
+}
+
+function showAvailabilityMessage(message, type) {
+  const messageEl = document.getElementById("availability-message");
+  if (!messageEl) return;
+
+  messageEl.classList.remove("hidden", "success", "error", "info");
+  messageEl.classList.add(type);
+  messageEl.textContent = message;
 }
 </script>
 {% endblock %}

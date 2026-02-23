@@ -3,15 +3,401 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="color-scheme" content="light dark">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.fuchsia.min.css">
-  {% block head %}{% endblock %}
   <title>{% block title %}Library Management{% endblock %}</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --card: #ffffff;
+      --card-muted: #f8fafc;
+      --text: #12263a;
+      --muted: #5a6b7d;
+      --line: #d8e1ea;
+      --brand: #0d5f7f;
+      --brand-soft: #e2f1f7;
+      --accent: #d97706;
+      --success: #18794e;
+      --danger: #b42318;
+      --info: #0f4c81;
+      --radius: 14px;
+      --shadow: 0 10px 28px rgba(19, 41, 61, 0.08);
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      background:
+        radial-gradient(circle at 95% 0%, #dceef7 0%, rgba(220, 238, 247, 0) 33%),
+        radial-gradient(circle at 0% 100%, #fff1e0 0%, rgba(255, 241, 224, 0) 36%),
+        var(--bg);
+      color: var(--text);
+      font-family: "Avenir Next", "Trebuchet MS", "Segoe UI", sans-serif;
+      line-height: 1.5;
+    }
+
+    a {
+      color: var(--brand);
+      text-decoration: none;
+    }
+
+    a:hover {
+      text-decoration: underline;
+    }
+
+    .shell {
+      width: min(1120px, 92vw);
+      margin: 0 auto;
+    }
+
+    .site-header {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      background: rgba(255, 255, 255, 0.94);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(8px);
+    }
+
+    .header-row {
+      min-height: 74px;
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      padding: 0.5rem 0;
+    }
+
+    .brand {
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: 0.02em;
+      color: var(--text);
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+    }
+
+    .brand-dot {
+      width: 0.85rem;
+      height: 0.85rem;
+      border-radius: 50%;
+      background: linear-gradient(130deg, var(--brand), #4ea5c7, var(--accent));
+      box-shadow: 0 0 0 4px var(--brand-soft);
+    }
+
+    .site-nav {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      align-items: center;
+    }
+
+    .site-nav a {
+      color: var(--text);
+      font-weight: 600;
+      padding: 0.45rem 0.72rem;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      transition: all 0.18s ease;
+    }
+
+    .site-nav a:hover {
+      text-decoration: none;
+      border-color: var(--line);
+      background: var(--card-muted);
+    }
+
+    .site-nav a.active {
+      background: var(--brand-soft);
+      color: var(--brand);
+      border-color: #bdd9e7;
+    }
+
+    .main-shell {
+      padding: 1.4rem 0 2.8rem;
+      display: grid;
+      gap: 1rem;
+    }
+
+    .panel {
+      background: var(--card);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 1.2rem clamp(1rem, 2vw, 1.5rem);
+    }
+
+    .panel-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 1rem;
+    }
+
+    h1,
+    h2,
+    h3 {
+      margin: 0 0 0.7rem;
+      line-height: 1.2;
+      letter-spacing: -0.01em;
+    }
+
+    .lead {
+      font-size: 1.04rem;
+      margin: 0 0 0.85rem;
+      color: #1f3f58;
+    }
+
+    .muted {
+      color: var(--muted);
+      margin-top: 0;
+    }
+
+    .alert {
+      border: 1px solid;
+      border-radius: 12px;
+      padding: 0.68rem 0.82rem;
+      margin: 0 0 0.9rem;
+      font-weight: 600;
+    }
+
+    .alert.success {
+      background: #e7f8ef;
+      border-color: #b6e5c8;
+      color: var(--success);
+    }
+
+    .alert.error {
+      background: #fbeae9;
+      border-color: #f2bfbb;
+      color: var(--danger);
+    }
+
+    .alert.info {
+      background: #eaf3fc;
+      border-color: #c3dcf4;
+      color: var(--info);
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .form-stack {
+      display: grid;
+      gap: 0.9rem;
+    }
+
+    .split {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 0.8rem;
+    }
+
+    label {
+      display: grid;
+      gap: 0.35rem;
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    input,
+    select,
+    button {
+      font: inherit;
+    }
+
+    input,
+    select {
+      width: 100%;
+      padding: 0.56rem 0.67rem;
+      border-radius: 10px;
+      border: 1px solid #c6d3df;
+      background: #fff;
+      color: var(--text);
+    }
+
+    input:focus,
+    select:focus {
+      outline: 2px solid #c3def0;
+      border-color: #8cbedb;
+    }
+
+    button,
+    .button-link {
+      border: 1px solid transparent;
+      border-radius: 10px;
+      background: var(--brand);
+      color: #fff;
+      font-weight: 700;
+      padding: 0.52rem 0.88rem;
+      cursor: pointer;
+      display: inline-flex;
+      justify-content: center;
+      align-items: center;
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+
+    button:hover,
+    .button-link:hover {
+      text-decoration: none;
+      background: #0b516d;
+    }
+
+    .button-secondary {
+      background: #eef3f8;
+      border-color: #c9d7e5;
+      color: #20405a;
+    }
+
+    .button-secondary:hover {
+      background: #e3ebf4;
+    }
+
+    .action-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.55rem;
+      align-items: center;
+    }
+
+    .table-wrap {
+      width: 100%;
+      overflow-x: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 720px;
+    }
+
+    th,
+    td {
+      text-align: left;
+      padding: 0.65rem 0.75rem;
+      border-bottom: 1px solid #e4ebf2;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f0f5fa;
+      font-size: 0.94rem;
+    }
+
+    tbody tr:nth-child(even) {
+      background: #fcfdff;
+    }
+
+    .status {
+      display: inline-block;
+      padding: 0.18rem 0.54rem;
+      border-radius: 999px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      letter-spacing: 0.01em;
+      text-transform: lowercase;
+      border: 1px solid;
+      white-space: nowrap;
+    }
+
+    .status-available,
+    .status-active {
+      color: #0f6b43;
+      background: #e4f6ec;
+      border-color: #b8e5ca;
+    }
+
+    .status-borrowed,
+    .status-reserved {
+      color: #8a4f05;
+      background: #fff4e5;
+      border-color: #f0d7b0;
+    }
+
+    .status-not_returned,
+    .status-cancelled,
+    .status-expired,
+    .status-inaccessible {
+      color: #8f1a17;
+      background: #fdeceb;
+      border-color: #f1c4c2;
+    }
+
+    .site-footer {
+      padding: 1rem 0 2rem;
+      color: var(--muted);
+      font-size: 0.94rem;
+    }
+
+    @media (max-width: 720px) {
+      .header-row {
+        align-items: flex-start;
+      }
+
+      .site-nav {
+        width: 100%;
+      }
+
+      .site-nav a {
+        flex: 1 1 auto;
+        text-align: center;
+      }
+    }
+  </style>
+  {% block head %}{% endblock %}
 </head>
 <body>
-<main class="container">
-<h1>Library Management</h1>
-{% block content %}{% endblock %}
+<header class="site-header">
+  <div class="shell header-row">
+    <a href="/" class="brand">
+      <span class="brand-dot"></span>
+      <span>Library Management</span>
+    </a>
+    <nav class="site-nav" aria-label="Primary navigation">
+      <a href="/">Home</a>
+      <a href="/books">Books</a>
+      <a href="/copies">Copies</a>
+      <a href="/my-reservations">My Reservations</a>
+      {% if username %}
+      <a href="/logout">Log Out</a>
+      {% else %}
+      <a href="/login">Sign In</a>
+      <a href="/register">Sign Up</a>
+      {% endif %}
+    </nav>
+  </div>
+</header>
+
+<main class="shell main-shell">
+  {% block content %}{% endblock %}
 </main>
+
+<footer class="shell site-footer">
+  <p>Library management portal for browsing, reserving, and tracking circulation.</p>
+</footer>
+
+<script>
+  (function () {
+    var path = window.location.pathname;
+    var links = document.querySelectorAll(".site-nav a");
+    links.forEach(function (link) {
+      var href = link.getAttribute("href");
+      if (!href) {
+        return;
+      }
+      if ((href !== "/" && path.indexOf(href) === 0) || (href === "/" && path === "/")) {
+        link.classList.add("active");
+      }
+    });
+  })();
+</script>
+{% block scripts %}{% endblock %}
 </body>
 </html>

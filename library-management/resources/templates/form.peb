@@ -1,4 +1,39 @@
 {% extends "base.peb" %}
-{% block title %}Library Management{% endblock %}
+{% block title %}Reusable Form{% endblock %}
 {% block content %}
+<section class="panel" style="max-width: 760px; margin: 0 auto;">
+  <h2>{% if formTitle %}{{ formTitle }}{% else %}Reusable Form{% endif %}</h2>
+  <p class="muted">
+    {% if formSubtitle %}
+    {{ formSubtitle }}
+    {% else %}
+    This shared template provides a consistent form layout.
+    {% endif %}
+  </p>
+
+  {% if formError %}
+  <p class="alert error">{{ formError }}</p>
+  {% endif %}
+
+  {% if formSuccess %}
+  <p class="alert success">{{ formSuccess }}</p>
+  {% endif %}
+
+  <form
+    method="{% if formMethod %}{{ formMethod }}{% else %}post{% endif %}"
+    action="{% if formAction %}{{ formAction }}{% else %}#{% endif %}"
+    class="form-stack"
+  >
+    {% block form_fields %}
+    <p class="alert info">Add custom fields inside the <code>form_fields</code> block when extending this template.</p>
+    {% endblock %}
+
+    <div class="action-row">
+      <button type="submit">{% if submitLabel %}{{ submitLabel }}{% else %}Submit{% endif %}</button>
+      {% if cancelUrl %}
+      <a href="{{ cancelUrl }}" class="button-link button-secondary">Cancel</a>
+      {% endif %}
+    </div>
+  </form>
+</section>
 {% endblock %}

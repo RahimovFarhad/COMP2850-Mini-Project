@@ -2,38 +2,74 @@
 {# @pebvariable name="username" type="String" #}
 {# @pebvariable name="userRole" type="String" #}
 {% extends "base.peb" %}
+{% block title %}Library Management{% endblock %}
 {% block content %}
-<h1>Welcome!</h1>
-{% if username %}
-<p style="color: green;">✓ You are logged in as <strong>{{ username }}</strong> <a href="/logout">[Log out]</a></p>
-{% if userRole == "staff" %}
-<article>
-  <h3>Staff Dashboard</h3>
-  <p>You have employee access. Manage inventory availability and monitor circulation.</p>
-  <ul>
-    <li><a href="/copies">Manage copy availability</a></li>
-    <li><a href="/books">Browse and filter catalog</a></li>
-  </ul>
-</article>
-{% endif %}
-{% else %}
-<p>You are not logged in.</p>
-{% endif %}
-<p>This site has
-{% if users == 1 %}
-1 registered user.</p>
-{% else %}
-{{ users }} registered users.</p>
-{% endif %}
-<ul>
-  {% if not username %}
-  <li><a href="/login">Sign in</a> if you are a registered user</li>
-  <li><a href="/register">Sign up</a> if you are new here</li>
+<section class="panel">
+  <h1>Library Management</h1>
+  <p class="lead">A single workspace for catalog search, copy availability, and reservation tracking.</p>
+
+  {% if username %}
+  <p class="alert success">
+    Signed in as <strong>{{ username }}</strong>{% if userRole %} ({{ userRole }}){% endif %}.
+    <a href="/logout">Log out</a>
+  </p>
   {% else %}
-  <li><a href="/logout">Log out</a></li>
-  <li><a href="/my-reservations">My Reservations</a></li>
+  <p class="alert info">
+    You are currently signed out. <a href="/login">Sign in</a> to reserve copies, or <a href="/register">create an account</a>.
+  </p>
   {% endif %}
-  <li><a href="/books">View Books</a></li>
-  <li><a href="/copies">View Copies</a></li>
-</ul>
+
+  <p class="muted">
+    {% if users == 1 %}
+    There is currently 1 registered user.
+    {% else %}
+    There are currently {{ users }} registered users.
+    {% endif %}
+  </p>
+</section>
+
+<section class="panel-grid">
+  <article class="panel">
+    <h3>Start Here</h3>
+    <p class="muted">Browse the library catalog and then jump directly to available copies.</p>
+    <div class="action-row">
+      <a href="/books" class="button-link">Browse Books</a>
+      <a href="/copies" class="button-link button-secondary">View Copies</a>
+    </div>
+  </article>
+
+  <article class="panel">
+    <h3>Reservations</h3>
+    <p class="muted">Track active reservations, and cancel any reservation that is no longer needed.</p>
+    <div class="action-row">
+      <a href="/my-reservations" class="button-link">My Reservations</a>
+    </div>
+  </article>
+
+  <article class="panel">
+    <h3>Access</h3>
+    {% if username %}
+    <p class="muted">You are already authenticated and can continue where you left off.</p>
+    <div class="action-row">
+      <a href="/logout" class="button-link button-secondary">Sign Out</a>
+    </div>
+    {% else %}
+    <p class="muted">Use your account for reservation actions and personalized pages.</p>
+    <div class="action-row">
+      <a href="/login" class="button-link">Sign In</a>
+      <a href="/register" class="button-link button-secondary">Sign Up</a>
+    </div>
+    {% endif %}
+  </article>
+
+  {% if userRole == "staff" %}
+  <article class="panel">
+    <h3>Staff Tools</h3>
+    <p class="muted">Update copy availability to keep circulation status accurate.</p>
+    <div class="action-row">
+      <a href="/copies" class="button-link">Manage Availability</a>
+    </div>
+  </article>
+  {% endif %}
+</section>
 {% endblock %}

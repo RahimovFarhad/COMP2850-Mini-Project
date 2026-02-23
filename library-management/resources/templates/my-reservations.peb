@@ -1,49 +1,55 @@
 {% extends "base.peb" %}
-
 {% block title %}My Reservations{% endblock %}
-
 {% block content %}
-<h2>My Reservations</h2>
-<p>Signed in as <strong>{{ username }}</strong>.</p>
-{% if message %}
-<p id="reservation-message"><strong>{{ message }}</strong></p>
-{% endif %}
+<section class="panel">
+  <h2>My Reservations</h2>
+  <p class="muted">Signed in as <strong>{{ username }}</strong>.</p>
+  {% if message %}
+  <p id="reservation-message" class="alert info">{{ message }}</p>
+  {% endif %}
+</section>
 
-{% if reservations | length == 0 %}
-<p>You have no reservations yet.</p>
-<p><a href="/copies">Browse copies</a></p>
-{% else %}
-<table>
-  <thead>
-    <tr>
-      <th>Reservation ID</th>
-      <th>Copy ID</th>
-      <th>Book</th>
-      <th>Status</th>
-      <th>Reserved At (ms)</th>
-      <th>Action</th>
-    </tr>
-  </thead>
-  <tbody>
-  {% for reservation in reservations %}
-    <tr>
-      <td>{{ reservation.reservationId }}</td>
-      <td>{{ reservation.copyId }}</td>
-      <td>{{ reservation.bookTitle }}</td>
-      <td>{{ reservation.status }}</td>
-      <td>{{ reservation.dateReserved }}</td>
-      <td>
-        {% if reservation.status == "active" %}
-        <form method="post" action="/my-reservations/{{ reservation.reservationId }}/cancel">
-          <button type="submit" class="secondary">Cancel</button>
-        </form>
-        {% else %}
-        -
-        {% endif %}
-      </td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% endif %}
+<section class="panel">
+  {% if reservations | length == 0 %}
+  <p class="alert info">You do not have any reservations yet.</p>
+  <div class="action-row">
+    <a href="/copies" class="button-link">Browse Copies</a>
+  </div>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Reservation ID</th>
+          <th>Copy ID</th>
+          <th>Book</th>
+          <th>Status</th>
+          <th>Reserved At (ms)</th>
+          <th>Action</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for reservation in reservations %}
+        <tr>
+          <td>{{ reservation.reservationId }}</td>
+          <td>{{ reservation.copyId }}</td>
+          <td>{{ reservation.bookTitle }}</td>
+          <td><span class="status status-{{ reservation.status }}">{{ reservation.status }}</span></td>
+          <td>{{ reservation.dateReserved }}</td>
+          <td>
+            {% if reservation.status == "active" %}
+            <form method="post" action="/my-reservations/{{ reservation.reservationId }}/cancel">
+              <button type="submit" class="button-secondary">Cancel</button>
+            </form>
+            {% else %}
+            <span class="muted">No action</span>
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
 {% endblock %}

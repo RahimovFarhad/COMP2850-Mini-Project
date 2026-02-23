@@ -1,55 +1,71 @@
 {% extends "base.peb" %}
 {% block title %}Books{% endblock %}
 {% block content %}
-<h2>Books</h2>
+<section class="panel">
+  <h2>Books</h2>
+  <p class="muted">Search the catalog by ISBN, title, author, or a general query.</p>
 
-<form method="get" action="/books" style="margin-bottom: 1rem;">
-  <div class="grid">
-    <label>
-      General
-      <input type="text" name="query" value="{{ queryFilter }}" placeholder="Title / author / ISBN">
-    </label>
-    <label>
-      ISBN
-      <input type="text" name="isbn" value="{{ isbn }}" placeholder="e.g. 978...">
-    </label>
-  </div>
-  <div class="grid">
-    <label>
-      Title
-      <input type="text" name="title" value="{{ titleFilter }}" placeholder="Book title">
-    </label>
-    <label>
-      Author
-      <input type="text" name="author" value="{{ authorFilter }}" placeholder="Author name">
-    </label>
-  </div>
-  <button type="submit">Filter</button>
-  <a href="/books" role="button" class="secondary">Clear</a>
-</form>
+  <form method="get" action="/books" class="form-stack">
+    <div class="split">
+      <label>
+        General
+        <input type="text" name="query" value="{{ queryFilter }}" placeholder="Title / author / ISBN">
+      </label>
 
-{% if books | length == 0 %}
-<p>No books found.</p>
-{% else %}
-<table>
-  <thead>
-    <tr>
-      <th>ID</th>
-      <th>Title</th>
-      <th>Author</th>
-      <th>ISBN</th>
-    </tr>
-  </thead>
-  <tbody>
-  {% for book in books %}
-    <tr>
-      <td>{{ book.id.value }}</td>
-      <td>{{ book.title }}</td>
-      <td>{{ book.author }}</td>
-      <td>{{ book.isbn }}</td>
-    </tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% endif %}
+      <label>
+        ISBN
+        <input type="text" name="isbn" value="{{ isbn }}" placeholder="e.g. 978...">
+      </label>
+    </div>
+
+    <div class="split">
+      <label>
+        Title
+        <input type="text" name="title" value="{{ titleFilter }}" placeholder="Book title">
+      </label>
+
+      <label>
+        Author
+        <input type="text" name="author" value="{{ authorFilter }}" placeholder="Author name">
+      </label>
+    </div>
+
+    <div class="action-row">
+      <button type="submit">Filter</button>
+      <a href="/books" class="button-link button-secondary">Clear</a>
+      {% if books | length > 0 %}
+      <span class="muted">{{ books | length }} result{% if books | length != 1 %}s{% endif %}</span>
+      {% endif %}
+    </div>
+  </form>
+</section>
+
+<section class="panel">
+  {% if books | length == 0 %}
+  <p class="alert info">No books matched your filters.</p>
+  {% else %}
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Title</th>
+          <th>Author</th>
+          <th>ISBN</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for book in books %}
+        <tr>
+          <td>{{ book.id.value }}</td>
+          <td>{{ book.title }}</td>
+          <td>{{ book.author }}</td>
+          <td>{{ book.isbn }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% endif %}
+</section>
 {% endblock %}
