@@ -51,6 +51,15 @@ import org.jetbrains.exposed.sql.SqlExpressionBuilder.eq
 import com.example.database.UserRole
 import com.example.database.CopyAvailabilityStatus
 
+private data class CopyAggregateRow(
+    val copyId: Int,
+    val bookId: Int,
+    val bookTitle: String,
+    val author: String,
+    val isbn: String,
+    val availabilityStatus: String,
+    val location: String
+)
 
 fun Application.configureRouting() {
     val bookRepository = BookRepository()
@@ -332,22 +341,65 @@ private suspend fun ApplicationCall.displayCopies() {
         }.orEmpty()
     }
 
+    val searchQuery = request.queryParameters["search"]?.trim().orEmpty()
+    val searchQueryLower = searchQuery.lowercase()
+
     val copiesForView = transaction {
-        (CopyTable innerJoin BookTable).selectAll().orderBy(CopyTable.id to SortOrder.ASC).map {
-            mapOf(
-                "copyId" to it[CopyTable.id].value,
-                "bookTitle" to it[BookTable.title],
-                "availabilityStatus" to it[CopyTable.availabilityStatus].name,
-                "location" to it[CopyTable.location]
-            )
-        }
+        (CopyTable innerJoin BookTable)
+            .selectAll()
+            .orderBy(BookTable.title to SortOrder.ASC, CopyTable.id to SortOrder.ASC)
+            .map {
+                CopyAggregateRow(
+                    copyId = it[CopyTable.id].value,
+                    bookId = it[BookTable.id].value,
+                    bookTitle = it[BookTable.title],
+                    author = it[BookTable.author],
+                    isbn = it[BookTable.isbn],
+                    availabilityStatus = it[CopyTable.availabilityStatus].name,
+                    location = it[CopyTable.location]
+                )
+            }
+            .groupBy { it.bookId }
+            .values
+            .map { rowsForBook ->
+                val first = rowsForBook.first()
+                val availableRows = rowsForBook.filter { it.availabilityStatus == CopyAvailabilityStatus.available.name }
+                val firstAvailableCopyId = availableRows.firstOrNull()?.copyId
+                val locationSummary = rowsForBook.map { it.location }.distinct().joinToString(", ")
+
+                mapOf(
+                    "bookId" to first.bookId,
+                    "bookTitle" to first.bookTitle,
+                    "author" to first.author,
+                    "isbn" to first.isbn,
+                    "totalCopies" to rowsForBook.size,
+                    "availableCopies" to availableRows.size,
+                    "firstAvailableCopyId" to firstAvailableCopyId,
+                    "locations" to locationSummary
+                )
+            }
+            .filter { row ->
+                if (searchQueryLower.isBlank()) {
+                    true
+                } else {
+                    val title = (row["bookTitle"] as String).lowercase()
+                    val author = (row["author"] as String).lowercase()
+                    val isbn = (row["isbn"] as String).lowercase()
+                    val locations = (row["locations"] as String).lowercase()
+                    title.contains(searchQueryLower) ||
+                        author.contains(searchQueryLower) ||
+                        isbn.contains(searchQueryLower) ||
+                        locations.contains(searchQueryLower)
+                }
+            }
     }
     respondTemplate(
         "copies.peb",
         mapOf(
             "copies" to copiesForView,
             "username" to username,
-            "userRole" to userRole
+            "userRole" to userRole,
+            "searchQuery" to searchQuery
         )
     )
 }

@@ -10,49 +10,71 @@
     Signed in as <strong>{{ username }}</strong>. <a href="/my-reservations">View my reservations</a>.
   </p>
   {% endif %}
+
+  <form method="get" action="/copies" class="form-stack">
+    <label for="copies-search">
+      Search copies
+      <input
+        type="search"
+        id="copies-search"
+        name="search"
+        value="{{ searchQuery }}"
+        placeholder="Search by title, author, ISBN, or location"
+        autocomplete="off"
+      >
+    </label>
+    <div class="action-row">
+      <button type="submit">Search</button>
+      <a href="/copies" class="button-link button-secondary">Clear</a>
+      {% if copies | length > 0 %}
+      <span class="muted">{{ copies | length }} title{% if copies | length != 1 %}s{% endif %} shown</span>
+      {% endif %}
+    </div>
+  </form>
 </section>
 
 <section class="panel">
   {% if copies | length == 0 %}
-  <p class="alert info">No copies found.</p>
+  <p class="alert info">No titles matched your search.</p>
   {% else %}
   <div class="table-wrap">
     <table>
       <thead>
         <tr>
-          <th>Copy ID</th>
           <th>Book</th>
-          <th>Status</th>
-          <th>Location</th>
+          <th>Author</th>
+          <th>ISBN</th>
+          <th>Total Copies</th>
+          <th>Copies Remaining</th>
+          <th>Locations</th>
           <th>Actions</th>
         </tr>
       </thead>
       <tbody>
       {% for copy in copies %}
         <tr>
-          <td>{{ copy.copyId }}</td>
           <td>{{ copy.bookTitle }}</td>
-          <td><span class="status status-{{ copy.availabilityStatus }}">{{ copy.availabilityStatus }}</span></td>
-          <td>{{ copy.location }}</td>
+          <td>{{ copy.author }}</td>
+          <td>{{ copy.isbn }}</td>
+          <td>{{ copy.totalCopies }}</td>
+          <td>
+            {% if copy.availableCopies > 0 %}
+            <span class="status status-available">{{ copy.availableCopies }}</span>
+            {% else %}
+            <span class="status status-inaccessible">0</span>
+            {% endif %}
+          </td>
+          <td>{{ copy.locations }}</td>
           <td>
             <div class="action-row">
-              {% if username and copy.availabilityStatus == "available" %}
-              <form onsubmit="return reserveCopy(event, '{{ copy.copyId }}')">
-                <button type="submit">Reserve</button>
+              {% if username and copy.availableCopies > 0 and copy.firstAvailableCopyId %}
+              <form onsubmit="return reserveCopy(event, '{{ copy.firstAvailableCopyId }}')">
+                <button type="submit">Reserve One Copy</button>
               </form>
-              {% endif %}
-
-              {% if userRole == "staff" or userRole == "volunteer" %}
-              <form onsubmit="return updateAvailability(event, '{{ copy.copyId }}')" class="action-row">
-                <select name="availability" required>
-                  <option value="available" {% if copy.availabilityStatus == "available" %}selected{% endif %}>available</option>
-                  <option value="borrowed" {% if copy.availabilityStatus == "borrowed" %}selected{% endif %}>borrowed</option>
-                  <option value="reserved" {% if copy.availabilityStatus == "reserved" %}selected{% endif %}>reserved</option>
-                  <option value="not_returned" {% if copy.availabilityStatus == "not_returned" %}selected{% endif %}>not_returned</option>
-                  <option value="inaccessible" {% if copy.availabilityStatus == "inaccessible" %}selected{% endif %}>inaccessible</option>
-                </select>
-                <button type="submit" class="button-secondary">Set</button>
-              </form>
+              {% elseif username %}
+              <span class="muted">No copies available</span>
+              {% else %}
+              <a href="/login" class="button-link button-secondary">Sign In to Reserve</a>
               {% endif %}
             </div>
           </td>
@@ -68,21 +90,6 @@
 
 {% block scripts %}
 <script>
-async function updateAvailability(event, copyId) {
-  event.preventDefault();
-  const form = event.target;
-  const availability = form.elements.availability.value;
-  const response = await fetch(`/set-availability/${copyId}?availability=${encodeURIComponent(availability)}`, {
-    method: "PUT"
-  });
-  const text = await response.text();
-  showAvailabilityMessage(text, response.ok ? "success" : "error");
-  if (response.ok) {
-    window.setTimeout(function () { window.location.reload(); }, 400);
-  }
-  return false;
-}
-
 async function reserveCopy(event, copyId) {
   event.preventDefault();
   const response = await fetch("/reservations/reserve", {

@@ -16,6 +16,19 @@
     <a href="/copies" class="button-link">Browse Copies</a>
   </div>
   {% else %}
+  <div class="form-stack" style="margin-bottom: 1rem;">
+    <label for="reservation-search">
+      Search Reservations
+      <input
+        type="search"
+        id="reservation-search"
+        placeholder="Search by reservation id, copy id, book title, or status"
+        autocomplete="off"
+      >
+    </label>
+    <p id="reservation-search-count" class="muted"></p>
+  </div>
+
   <div class="table-wrap">
     <table>
       <thead>
@@ -28,9 +41,9 @@
           <th>Action</th>
         </tr>
       </thead>
-      <tbody>
+      <tbody id="reservation-table-body">
       {% for reservation in reservations %}
-        <tr>
+        <tr class="reservation-row">
           <td>{{ reservation.reservationId }}</td>
           <td>{{ reservation.copyId }}</td>
           <td>{{ reservation.bookTitle }}</td>
@@ -50,6 +63,44 @@
       </tbody>
     </table>
   </div>
+  <p id="reservation-search-empty" class="alert info hidden">No reservations match that search.</p>
   {% endif %}
 </section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+(function () {
+  const searchInput = document.getElementById("reservation-search");
+  const tableBody = document.getElementById("reservation-table-body");
+  const countEl = document.getElementById("reservation-search-count");
+  const emptyEl = document.getElementById("reservation-search-empty");
+  if (!searchInput || !tableBody || !countEl || !emptyEl) return;
+
+  const rows = Array.from(tableBody.querySelectorAll(".reservation-row"));
+  const totalRows = rows.length;
+
+  function applyFilter() {
+    const query = searchInput.value.trim().toLowerCase();
+    let visible = 0;
+
+    rows.forEach(function (row) {
+      const rowText = row.textContent.toLowerCase();
+      const match = query === "" || rowText.indexOf(query) !== -1;
+      row.style.display = match ? "" : "none";
+      if (match) visible += 1;
+    });
+
+    countEl.textContent = `${visible} of ${totalRows} reservation${totalRows === 1 ? "" : "s"} shown`;
+    if (visible === 0) {
+      emptyEl.classList.remove("hidden");
+    } else {
+      emptyEl.classList.add("hidden");
+    }
+  }
+
+  searchInput.addEventListener("input", applyFilter);
+  applyFilter();
+})();
+</script>
 {% endblock %}
