@@ -118,6 +118,32 @@ fun Application.configureRouting() {
                     call.respondText("Cancel failed.", status = HttpStatusCode.Conflict)
                 }
             }
+            post("/my-reservations/{reservationId}/cancel") {
+                val username = call.sessions.get<UserSession>()?.username?.trim().orEmpty()
+                val userId = findOrCreateMemberUserId(username)
+                if (userId == null) {
+                    call.respondRedirect("/login")
+                    return@post
+                }
+
+                val id = call.parameters["reservationId"]?.toIntOrNull()
+                if (id == null) {
+                    call.respondRedirect("/my-reservations?message=Invalid%20reservation%20id")
+                    return@post
+                }
+
+                val ok = try {
+                    reservationService.cancelReservation(id, userId)
+                } catch (_: IllegalArgumentException) {
+                    false
+                }
+
+                if (ok) {
+                    call.respondRedirect("/my-reservations?message=Reservation%20cancelled")
+                } else {
+                    call.respondRedirect("/my-reservations?message=Cancel%20failed")
+                }
+            }
             get("/my-reservations"){
                 val username = call.sessions.get<UserSession>()?.username?.trim().orEmpty()
                 val userId = findOrCreateMemberUserId(username)
@@ -144,7 +170,8 @@ fun Application.configureRouting() {
                     "my-reservations.peb",
                     mapOf(
                         "username" to username,
-                        "reservations" to reservationsForView
+                        "reservations" to reservationsForView,
+                        "message" to (call.request.queryParameters["message"] ?: "")
                     )
                 )
             }

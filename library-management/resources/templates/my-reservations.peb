@@ -5,6 +5,9 @@
 {% block content %}
 <h2>My Reservations</h2>
 <p>Signed in as <strong>{{ username }}</strong>.</p>
+{% if message %}
+<p id="reservation-message"><strong>{{ message }}</strong></p>
+{% endif %}
 
 {% if reservations | length == 0 %}
 <p>You have no reservations yet.</p>
@@ -31,7 +34,7 @@
       <td>{{ reservation.dateReserved }}</td>
       <td>
         {% if reservation.status == "active" %}
-        <form onsubmit="return cancelReservation(event, '{{ reservation.reservationId }}')">
+        <form method="post" action="/my-reservations/{{ reservation.reservationId }}/cancel">
           <button type="submit" class="secondary">Cancel</button>
         </form>
         {% else %}
@@ -42,27 +45,5 @@
   {% endfor %}
   </tbody>
 </table>
-<p id="reservation-message" style="margin-top: 1rem;"></p>
 {% endif %}
-
-<script>
-async function cancelReservation(event, reservationId) {
-  event.preventDefault();
-  const messageEl = document.getElementById('reservation-message');
-
-  try {
-    const response = await fetch(`/reservations/${reservationId}/cancel`, {
-      method: 'POST'
-    });
-    const text = await response.text();
-    messageEl.textContent = text;
-    if (response.ok) {
-      window.location.reload();
-    }
-  } catch (error) {
-    messageEl.textContent = 'Request failed';
-  }
-  return false;
-}
-</script>
 {% endblock %}
