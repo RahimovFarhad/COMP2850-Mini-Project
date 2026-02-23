@@ -38,6 +38,7 @@
     </div>
   </article>
 
+  {% if not username or userRole == "member" %}
   <article class="panel">
     <h3>Reservations</h3>
     <p class="muted">Track active reservations, and cancel any reservation that is no longer needed.</p>
@@ -45,6 +46,7 @@
       <a href="/my-reservations" class="button-link">My Reservations</a>
     </div>
   </article>
+  {% endif %}
 
   <article class="panel">
     <h3>Access</h3>
