@@ -61,6 +61,11 @@ private data class CopyAggregateRow(
     val location: String
 )
 
+private data class ResolvedUser(
+    val id: Int,
+    val role: UserRole
+)
+
 fun Application.configureRouting() {
     val bookRepository = BookRepository()
     val bookService = BookService(bookRepository)
@@ -186,9 +191,7 @@ fun Application.configureRouting() {
             }
             put("/set-availability/{copyId}"){
                 val username = call.sessions.get<UserSession>()?.username?.trim().orEmpty()
-                val currentUser = transaction {
-                    Users.find { UsersTable.name eq username }.firstOrNull()
-                }
+                val currentUser = resolveOrCreateUser(username)
                 if (currentUser == null) {
                     call.respondText("User not found", status = HttpStatusCode.Unauthorized)
                     return@put
@@ -298,9 +301,7 @@ private suspend fun ApplicationCall.homePage() {
     val userRole = if (username.isBlank()) {
         ""
     } else {
-        transaction {
-            Users.find { UsersTable.name eq username }.firstOrNull()?.role?.name ?: ""
-        }.orEmpty()
+        resolveOrCreateUser(username)?.role?.name.orEmpty()
     }
     respondTemplate(
         "index.peb",
@@ -336,9 +337,7 @@ private suspend fun ApplicationCall.displayCopies() {
     val userRole = if (username.isBlank()) {
         ""
     } else {
-        transaction {
-            Users.find { UsersTable.name eq username }.firstOrNull()?.role?.name ?: ""
-        }.orEmpty()
+        resolveOrCreateUser(username)?.role?.name.orEmpty()
     }
 
     val searchQuery = request.queryParameters["search"]?.trim().orEmpty()
@@ -393,10 +392,38 @@ private suspend fun ApplicationCall.displayCopies() {
                 }
             }
     }
+
+    val staffCopiesForView = transaction {
+        (CopyTable innerJoin BookTable)
+            .selectAll()
+            .orderBy(BookTable.title to SortOrder.ASC, CopyTable.id to SortOrder.ASC)
+            .map {
+                mapOf(
+                    "copyId" to it[CopyTable.id].value,
+                    "bookTitle" to it[BookTable.title],
+                    "availabilityStatus" to it[CopyTable.availabilityStatus].name,
+                    "location" to it[CopyTable.location]
+                )
+            }
+            .filter { row ->
+                if (searchQueryLower.isBlank()) {
+                    true
+                } else {
+                    val title = (row["bookTitle"] as String).lowercase()
+                    val status = (row["availabilityStatus"] as String).lowercase()
+                    val location = (row["location"] as String).lowercase()
+                    title.contains(searchQueryLower) ||
+                        status.contains(searchQueryLower) ||
+                        location.contains(searchQueryLower)
+                }
+            }
+    }
+
     respondTemplate(
         "copies.peb",
         mapOf(
             "copies" to copiesForView,
+            "staffCopies" to staffCopiesForView,
             "username" to username,
             "userRole" to userRole,
             "searchQuery" to searchQuery
@@ -424,20 +451,39 @@ private suspend fun ApplicationCall.registerUser() {
 }
 
 private fun findOrCreateMemberUserId(username: String): Int? {
+    return resolveOrCreateUser(username)?.id
+}
+
+private fun resolveOrCreateUser(username: String): ResolvedUser? {
     if (username.isBlank()) return null
 
     return transaction {
+        val expectedRole = inferRoleForUsername(username)
         val existing = Users.find { UsersTable.name eq username }.firstOrNull()
+
         if (existing != null) {
-            existing.id.value
+            if (existing.role == UserRole.member && expectedRole != UserRole.member) {
+                existing.role = expectedRole
+            }
+            ResolvedUser(existing.id.value, existing.role)
         } else {
-            Users.new {
+            val newUser = Users.new {
                 name = username
                 email = "${username}@library.local"
                 passwordHash = "managed_in_auth_csv"
-                role = UserRole.member
-            }.id.value
+                role = expectedRole
+            }
+            ResolvedUser(newUser.id.value, newUser.role)
         }
+    }
+}
+
+private fun inferRoleForUsername(username: String): UserRole {
+    val normalized = username.trim().lowercase()
+    return when {
+        normalized.startsWith("staff_") -> UserRole.staff
+        normalized.startsWith("volunteer_") -> UserRole.volunteer
+        else -> UserRole.member
     }
 }
 
